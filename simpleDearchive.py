@@ -44,8 +44,9 @@ def find_archive_files(folder_path):
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             if any(file.lower().endswith(ext) for ext in archive_extensions):
-                size_mb = os.path.getsize(os.path.join(root, file)) / (1024 * 1024)
-                archive_files.append((file, {'size_mb': round(size_mb, 2)}))
+                full_path = os.path.join(root, file)
+                size_mb = os.path.getsize(full_path) / (1024 * 1024)
+                archive_files.append((full_path, {'size_mb': round(size_mb, 2)}))
 
     return archive_files
 
@@ -61,11 +62,13 @@ def peek_inside_archive(file_path):
                 print(f"  {item.filename} - {size_mb} MB")
     elif ext == '.7z':
         with py7zr.SevenZipFile(file_path, mode='r') as seven_zip_ref:
-            file_list = seven_zip_ref.getnames()
+            file_list = seven_zip_ref.list()
             for item in file_list:
+                size_mb = round(item.uncompressed / (1024 * 1024), 2) if item.uncompressed else 0
                 print(f"  {item.filename} - {size_mb} MB")
     else:
         print(f"Peeking not supported for {ext} files.")
+        return []
     return file_list
 
 
@@ -99,7 +102,10 @@ if folder:
     list_contents(folder)
     archive_files = find_archive_files(folder)
     print(f"\nFound {len(archive_files)} archive files:")
-    for file in archive_files:
-        print(f"  {file}")
-        if archive_files:
-            peek_inside_archive(os.path.join(folder, archive_files[0][0]))
+
+    for full_path, info in archive_files:
+        print(f"/nFound {len(archive_files)} archive files:")
+        try:
+            peek_inside_archive(full_path)
+        except Exception as e:
+            print(f" Error peeking into {full_path}: {e}")
