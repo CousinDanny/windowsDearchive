@@ -71,29 +71,37 @@ def peek_inside_archive(file_path):
         return []
     return file_list
 
+def extract_archive_to_folder(file_path, destination_folder):
+    ext = os.path.splitext(file_path)[1].lower()
+    archive_name = os.path.splitext(os.path.basename(file_path))[0]
 
+    # Create a subfolder named after the archive, inside the destination
+    output_folder = os.path.join(destination_folder, archive_name)
+    os.makedirs(output_folder, exist_ok=True)
 
-def unzip_any(archive_path, output_folder=None):
-    ext = os.path.splitext(archive_path)[1].lower()
-    name = os.path.splittext(os.path.basename(archive_path))[0]
-    output_folder = output_folder or os.path.join(os.path.dirname(archive_path), name)
+    print(f"Extracting: {os.path.basename(file_path)} → {output_folder}")
 
     if ext == '.zip':
-        with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-            zip_ref.extractall(path=output_folder)
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            zip_ref.extractall(output_folder)
+
     elif ext == '.7z':
-        with py7zr.SevenZipFile(archive_path, mode='r') as seven_zip_ref:
+        with py7zr.SevenZipFile(file_path, mode='r') as seven_zip_ref:
             seven_zip_ref.extractall(path=output_folder)
-    elif ext == '.rar':
-        with rarfile.RarFile(archive_path) as rar_ref:
-            rar_ref.extractall(path=output_folder)
-    elif ext in ['.tar', '.gz', 'bz2', '.tar.gz', '.tgz']:
-        with tarfile.open(archive_path, 'r:*') as tar_ref:
+
+    elif ext in ('.tar', '.gz', '.tgz', '.bz2'):
+        with tarfile.open(file_path, 'r:*') as tar_ref:
             tar_ref.extractall(output_folder)
+
+    elif ext == '.rar':
+        import rarfile
+        with rarfile.RarFile(file_path, 'r') as rar_ref:
+            rar_ref.extractall(output_folder)
+
     else:
-        print(f"Unsupported archive format: {ext}")
+        print(f"  Extraction not supported for {ext} files.")
         return None
-    print(f"Extracted '{archive_path}' to '{output_folder}'")
+
     return output_folder
 
 # Run program  
@@ -103,9 +111,19 @@ if folder:
     archive_files = find_archive_files(folder)
     print(f"\nFound {len(archive_files)} archive files:")
 
+    # Create a destination folder for extracted files
+    destination = os.path.join(folder, "extracted_archives")
+    os.makedirs(destination, exist_ok=True)
+
     for full_path, info in archive_files:
         print(f"/nFound {len(archive_files)} archive files:")
         try:
             peek_inside_archive(full_path)
         except Exception as e:
             print(f" Error peeking into {full_path}: {e}")
+        print(f" {os.path.basename(full_path)} - {info['size_mb']} MB")
+        try:
+            extract_archive_to_folder(full_path, destination)
+        except Exception as e:
+            print(f" Error extracting {full_path}: {e}")
+            
